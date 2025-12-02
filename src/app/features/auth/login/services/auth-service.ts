@@ -1,0 +1,52 @@
+import { inject, Injectable, signal } from '@angular/core';
+import { Observable, tap } from 'rxjs';
+import { LoginResponse, User } from '../../models/auth.model';
+import { HttpClient, httpResource, HttpResourceRef, HttpResourceRequest } from '@angular/common/http';
+import { environment } from '../../../../../environments/environment';
+import { errorContext } from 'rxjs/internal/util/errorContext';
+import { Router } from '@angular/router';
+
+@Injectable({
+  providedIn: 'root',
+})
+export class AuthService {
+
+  http = inject(HttpClient);
+  router = inject(Router);
+  user = signal<User | null>(null);
+
+
+  loadUser() : HttpResourceRef<User | undefined>{
+    return httpResource<User>(()=>{
+      const request : HttpResourceRequest = {
+        url : `${environment.apiBaseUrl}/api/auth/me`,
+        withCredentials : true
+      }
+      return request;
+    })
+  }
+
+  login(email: string, password: string): Observable<LoginResponse> {
+    return this.http.post<LoginResponse>(`${environment.apiBaseUrl}/api/auth/login`, {
+      email: email,
+      password: password
+    },{
+      withCredentials : true
+    })
+    .pipe(
+      tap((userResponse) => this.user.set(userResponse))
+    )
+  }
+
+  logout(){
+    return this.http.post<void>(`${environment.apiBaseUrl}/api/auth/logout`, {}, {
+      withCredentials: true
+    })
+    .subscribe({
+      next:() => {
+        this.user.set(null);
+        this.router.navigate([''])
+      }
+    })
+  }
+}
